@@ -86,6 +86,9 @@ The `archive/` directory preserves the other Franka Duo/cable work from the form
 
 - `archive/task1_isaacsim/`: the complete Isaac Sim/Newton task1 cable experiment, its FR3 Duo embodiment configuration, bridge scripts, cable USD assets, and configuration files;
 - `archive/task1_mujoco_support/`: MuJoCo task-level launchers, Docker/Conda setup, ROS teleoperation package, and ManipulationNet client support files.
+- `archive/workspace_assets/`: root-workspace FR3 Duo USD assets (`mobile_fr3_duo_v0_2.usd`, `LeftArm_mobile_fr3_duo_v0_2.usd`) and `Aloha_mobile_fr3_duo.zip` used by prior Isaac experiments.
+
+> The current workspace did **not** contain `Robotiq_2f_85_with_d405_mobile_fr3_duo_v0_2.usd`, which some archived Isaac scripts reference. On a new machine, use `archive/task1_isaacsim/scripts/download_large_assets.sh` or the documented asset source to obtain it.
 
 The root replay command does not need these archived directories. Keep them when migrating to another machine; they are included so the prior experiments and optional evaluation/ROS workflows are not lost.
 
