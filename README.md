@@ -178,6 +178,8 @@ connected or the headset is not being worn.
 
 ## ManipulationNet eval (`--mnet`)
 
+> **Note:** The official ManipulationNet ROS client is not bundled in this standalone repository. The validated hanging-cable replay above runs without it; provide the client separately only when using `--mnet` evaluation.
+
 `teleop/mnet_bridge.py` makes the sim look like a robot system to the
 official mnet-client (`../mnet_client-ros_2`, part of this repo): it
 publishes the evidence camera as `sensor_msgs/Image` (default
