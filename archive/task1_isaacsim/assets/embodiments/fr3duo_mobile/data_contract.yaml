@@ -1,0 +1,117 @@
+embodiment_key: fr3duo_mobile
+version: "1.0"
+contract_name: fr3_duo_mobile_data_contract
+contract_version: "1.0.0"
+description: "Data structure and semantics for mobile dual-arm robot."
+
+sampling:
+  frequency_hz: 60
+  deterministic: true
+  jitter_tolerance_percent: 5
+
+state_structure:
+  base:
+    base_id: -1
+    dof: 3
+    fields:
+      - x_m
+      - y_m
+      - theta_rad
+      - vx_m_s
+      - vy_m_s
+      - omega_rad_s
+    description: "Mobile base pose and velocity (3-DOF planar)"
+    
+  arms:
+    left:
+      arm_id: 0
+      joint_count: 7
+      joint_names:
+        - left_fr3v2_joint1
+        - left_fr3v2_joint2
+        - left_fr3v2_joint3
+        - left_fr3v2_joint4
+        - left_fr3v2_joint5
+        - left_fr3v2_joint6
+        - left_fr3v2_joint7
+      fields:
+        - position_rad
+        - velocity_rad_s
+        - effort_nm
+      
+    right:
+      arm_id: 1
+      joint_count: 7
+      joint_names:
+        - right_fr3v2_joint1
+        - right_fr3v2_joint2
+        - right_fr3v2_joint3
+        - right_fr3v2_joint4
+        - right_fr3v2_joint5
+        - right_fr3v2_joint6
+        - right_fr3v2_joint7
+      fields:
+        - position_rad
+        - velocity_rad_s
+        - effort_nm
+  
+  gripper:
+    left:
+      arm_id: 0
+      joint_name: left_robotiq_85_left_knuckle_joint
+      normalized_semantics: open_fraction
+      range_min: 0.0
+      range_max: 1.0
+      description: "Left gripper: 1.0=fully open, 0.0=fully closed"
+    
+    right:
+      arm_id: 1
+      joint_name: right_robotiq_85_left_knuckle_joint
+      normalized_semantics: open_fraction
+      range_min: 0.0
+      range_max: 1.0
+      description: "Right gripper: 1.0=fully open, 0.0=fully closed"
+
+action_structure:
+  base_targets:
+    count: 3
+    order: [vx_m_s, vy_m_s, omega_rad_s]
+    description: "Base velocity commands (planar omnidirectional)"
+    
+  arm_targets:
+    count: 14
+    order: [left_0_6, right_0_6]
+    units: radians
+    description: "Target joint angles for both arms"
+  
+  gripper_targets:
+    count: 2
+    order: [left_opening, right_opening]
+    units: normalized_fraction
+    range: [0.0, 1.0]
+    description: "Gripper opening command (normalized)"
+
+wrench:
+  recorded_in_pose_tests: false
+  wrench_frame: left_link8_and_right_link8
+  units: "N for force, N·m for torque"
+
+episode_metadata:
+  episode_id_format: "{dataset_id}_{epoch_timestamp_seconds}"
+  episode_success_field: success
+  episode_success_values: [true, false]
+  episode_step_count_field: step_count
+
+data_types:
+  base_state: float32
+  arm_state: float32
+  action_vector: float32
+  timestamps: float64
+  episode_id: string
+
+notes: |
+  - Base state includes pose (x, y, theta) and velocity (vx, vy, omega).
+  - Base commands are velocity-based; position integration happens at runtime.
+  - Arm state and commands are identical to fr3duo_m+v (7 DOF per arm).
+  - Total action dimensionality: 3 (base) + 14 (arm) + 2 (gripper) = 19.
+  - Episodes may include base motion for workspace repositioning between tasks.

@@ -1,0 +1,584 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ROS2 Browser Controller</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <nav class="nav">
+    <span class="nav-brand">ROS2 Browser</span>
+    <a href="/" class="nav-link active">Controller</a>
+    <a href="/topology" class="nav-link">Topology</a>
+    <a href="/monitor" class="nav-link">Process Monitor</a>
+  </nav>
+  <div class="wrap">
+    <h1>ROS2 Browser Joint Controller</h1>
+    <p>This app runs as an independent ROS2 controller process in its own container. Robotiq uses 1.0=open, 0.0=closed.</p>
+    <div class="toolbar">
+      <div id="controlModes" class="mode-btn-group"></div>
+      <button id="resetAllBtn" class="reset-btn" type="button">Reset All</button>
+    </div>
+    <div id="status" class="status">Connecting...</div>
+    <div id="controllerTab">
+    <div class="overview-grid">
+      <section class="overview-panel">
+        <h2>Simulation and Controller Status</h2>
+        <div id="statusCards" class="status-cards"></div>
+      </section>
+
+    </div>
+    <section class="overview-panel base-panel">
+      <h2>Mobile base</h2>
+      <div class="base-panel-body">
+        <div class="base-dpad">
+          <button type="button" class="base-btn base-rotccw" data-token="A+C" title="Rotate CCW">&#8634;</button>
+          <button type="button" class="base-btn base-fwd" data-token="FWD" title="Forward">&#8593;</button>
+          <button type="button" class="base-btn base-rotcw" data-token="B+C" title="Rotate CW">&#8635;</button>
+          <button type="button" class="base-btn base-left" data-token="A" title="Strafe left">&#8592;</button>
+          <button type="button" class="base-btn base-back" data-token="BACK" title="Backward">&#8595;</button>
+          <button type="button" class="base-btn base-right" data-token="B" title="Strafe right">&#8594;</button>
+        </div>
+        <div class="hint base-caption">Hold to drive at a fixed speed. Release (or leave the window) to stop automatically.</div>
+      </div>
+    </section>
+    <div id="groups"></div>
+    <div class="topic-overview">
+      <section class="topic-panel">
+        <h2>IsaacSim Topics</h2>
+        <ul id="isaacTopics" class="topic-list"></ul>
+      </section>
+      <section class="topic-panel">
+        <h2>Bridge Topics</h2>
+        <ul id="frankaTopics" class="topic-list"></ul>
+      </section>
+    </div>
+    </div>
+  </div>
+  <script>
+    const statusEl = document.getElementById("status");
+    const groupsEl = document.getElementById("groups");
+    const resetAllBtn = document.getElementById("resetAllBtn");
+    const controlModesEl = document.getElementById("controlModes");
+    const statusCardsEl = document.getElementById("statusCards");
+    const isaacTopicsEl = document.getElementById("isaacTopics");
+    const frankaTopicsEl = document.getElementById("frankaTopics");
+    const state = { cards: new Map(), activeKey: null, pending: {}, timer: null, currentMode: "ui_control", modesPopulated: false };
+
+    function setStatus(text) { statusEl.textContent = text; }
+
+    function defaultStatusLabel(status) {
+      if (status === "active") return "ACTIVE";
+      if (status === "idle") return "IDLE";
+      if (status === "connected") return "CONNECTED";
+      if (status === "ready") return "READY";
+      if (status === "publishing") return "PUBLISHING";
+      if (status === "subscribed") return "SUBSCRIBED";
+      return "NO DATA";
+    }
+
+    function formatActivityAge(lastActivity) {
+      const ts = Number(lastActivity || 0);
+      if (!Number.isFinite(ts) || ts <= 0) return "no traffic yet";
+      const age = Math.max(0, (Date.now() / 1000) - ts);
+      if (age < 1.0) return "last seen <1s ago";
+      if (age < 10.0) return "last seen " + age.toFixed(1) + "s ago";
+      if (age < 60.0) return "last seen " + Math.round(age) + "s ago";
+      const minutes = Math.floor(age / 60.0);
+      return "last seen " + minutes + "m ago";
+    }
+
+    function normalizeStatus(status) {
+      if (typeof status !== "string" || status.length === 0) return "inactive";
+      return status;
+    }
+
+    function applyStatusBadge(el, status, label, detail) {
+      const normalizedStatus = normalizeStatus(status);
+      el.className = "activity-badge " + normalizedStatus;
+      el.textContent = label || defaultStatusLabel(normalizedStatus);
+      el.title = detail || "";
+    }
+
+    function applyActivityBadge(el, isActive, lastActivity) {
+      const hasActivity = Number(lastActivity || 0) > 0;
+      const status = isActive ? "active" : (hasActivity ? "idle" : "inactive");
+      applyStatusBadge(el, status, defaultStatusLabel(status), formatActivityAge(lastActivity));
+    }
+
+    function queue(topic, name, value) {
+      if (state.currentMode !== "ui_control") return;
+      if (!state.pending[topic]) state.pending[topic] = {};
+      state.pending[topic][name] = value;
+      if (state.timer === null) state.timer = setTimeout(flush, 45);
+    }
+
+    async function flush() {
+      const payloads = state.pending;
+      state.pending = {};
+      state.timer = null;
+      for (const [topic, positions] of Object.entries(payloads)) {
+        try {
+          await fetch("/api/command", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ command_topic: topic, positions })
+          });
+        } catch (err) {
+          setStatus("Failed to send command: " + String(err));
+        }
+      }
+    }
+
+    async function resetAllTargets() {
+      if (state.currentMode !== "ui_control") return;
+      try {
+        const res = await fetch("/api/reset", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({})
+        });
+        if (!res.ok) {
+          throw new Error("HTTP " + res.status);
+        }
+        const payload = await res.json();
+        await refresh();
+        setStatus(payload.message || "Targets reset to initial startup values.");
+      } catch (err) {
+        setStatus("Reset failed: " + String(err));
+      }
+    }
+
+    function ensureCard(group) {
+      let card = state.cards.get(group.command_topic);
+      if (card) return card;
+
+      const root = document.createElement("section");
+      root.className = "group";
+
+      const header = document.createElement("div");
+      header.className = "group-header";
+      const title = document.createElement("div");
+      title.textContent = group.label;
+      const groupMeta = document.createElement("div");
+      groupMeta.className = "group-meta";
+      const activityBadge = document.createElement("div");
+      activityBadge.className = "activity-badge inactive";
+      activityBadge.textContent = "NO DATA";
+      const topic = document.createElement("div");
+      topic.className = "topic";
+      topic.textContent = group.state_topic + " -> " + group.command_topic;
+      groupMeta.appendChild(activityBadge);
+      groupMeta.appendChild(topic);
+      header.appendChild(title);
+      header.appendChild(groupMeta);
+
+      const body = document.createElement("div");
+      body.className = "group-body";
+
+      const gripperLabel = document.createElement("div");
+      gripperLabel.className = "gripper-section-label";
+      gripperLabel.textContent = "Gripper";
+      gripperLabel.style.display = "none";
+
+      const gripperBody = document.createElement("div");
+      gripperBody.className = "group-body";
+
+      root.appendChild(header);
+      root.appendChild(body);
+      root.appendChild(gripperLabel);
+      root.appendChild(gripperBody);
+      groupsEl.appendChild(root);
+
+      card = { body, gripperBody, gripperLabel, sliders: new Map(), gripperSliders: new Map(), activityBadge };
+      state.cards.set(group.command_topic, card);
+      return card;
+    }
+
+    function render(group, gripperGroup) {
+      const card = ensureCard(group);
+      const seen = new Set();
+      applyActivityBadge(
+        card.activityBadge,
+        Boolean(group.is_active),
+        Number(group.last_activity || 0)
+      );
+
+      if (!group.available) {
+        card.body.innerHTML = '<div class="hint">Waiting for joint states...</div>';
+        card.sliders.clear();
+        return;
+      }
+
+      for (const joint of group.joints) {
+        seen.add(joint.name);
+        let row = card.sliders.get(joint.name);
+        if (!row) {
+          const rowEl = document.createElement("div");
+          rowEl.className = "joint-row";
+
+          const nameEl = document.createElement("div");
+          nameEl.className = "joint-name";
+          nameEl.textContent = joint.name;
+
+          const slider = document.createElement("input");
+          slider.type = "range";
+          slider.min = String(joint.min);
+          slider.max = String(joint.max);
+          slider.step = "0.001";
+          slider.dataset.key = group.command_topic + "|" + joint.name;
+          slider.addEventListener("pointerdown", () => state.activeKey = slider.dataset.key);
+          slider.addEventListener("pointerup", () => state.activeKey = null);
+          slider.addEventListener("mouseleave", () => state.activeKey = null);
+          slider.addEventListener("input", () => {
+            const value = Number(slider.value);
+            valueEl.textContent = value.toFixed(3);
+            queue(group.command_topic, joint.name, value);
+          });
+
+          const valueEl = document.createElement("div");
+          valueEl.className = "joint-value";
+
+          rowEl.appendChild(nameEl);
+          rowEl.appendChild(slider);
+          rowEl.appendChild(valueEl);
+          card.body.appendChild(rowEl);
+          row = { rowEl, slider, valueEl };
+          card.sliders.set(joint.name, row);
+        }
+
+        const key = group.command_topic + "|" + joint.name;
+        row.slider.min = String(joint.min);
+        row.slider.max = String(joint.max);
+        if (state.activeKey !== key) {
+          const clampedTarget = Math.min(Math.max(Number(joint.target_position), Number(joint.min)), Number(joint.max));
+          row.slider.value = clampedTarget.toFixed(4);
+        }
+        row.valueEl.textContent = Number(joint.position).toFixed(3);
+      }
+
+      for (const [name, row] of card.sliders.entries()) {
+        if (!seen.has(name)) {
+          row.rowEl.remove();
+          card.sliders.delete(name);
+        }
+      }
+
+      // Render gripper joints inside the same card
+      const gripperSeen = new Set();
+      if (gripperGroup && gripperGroup.available) {
+        card.gripperLabel.style.display = "";
+        for (const joint of gripperGroup.joints) {
+          gripperSeen.add(joint.name);
+          let row = card.gripperSliders.get(joint.name);
+          if (!row) {
+            const rowEl = document.createElement("div");
+            rowEl.className = "joint-row";
+
+            const nameEl = document.createElement("div");
+            nameEl.className = "joint-name";
+            nameEl.textContent = joint.name;
+
+            const slider = document.createElement("input");
+            slider.type = "range";
+            slider.min = String(joint.min);
+            slider.max = String(joint.max);
+            slider.step = "0.001";
+            slider.dataset.key = gripperGroup.command_topic + "|" + joint.name;
+            slider.addEventListener("pointerdown", () => state.activeKey = slider.dataset.key);
+            slider.addEventListener("pointerup", () => state.activeKey = null);
+            slider.addEventListener("mouseleave", () => state.activeKey = null);
+            slider.addEventListener("input", () => {
+              const value = Number(slider.value);
+              valueEl.textContent = value.toFixed(3);
+              queue(gripperGroup.command_topic, joint.name, value);
+            });
+
+            const valueEl = document.createElement("div");
+            valueEl.className = "joint-value";
+
+            rowEl.appendChild(nameEl);
+            rowEl.appendChild(slider);
+            rowEl.appendChild(valueEl);
+            card.gripperBody.appendChild(rowEl);
+            row = { rowEl, slider, valueEl };
+            card.gripperSliders.set(joint.name, row);
+          }
+
+          const key = gripperGroup.command_topic + "|" + joint.name;
+          row.slider.min = String(joint.min);
+          row.slider.max = String(joint.max);
+          if (state.activeKey !== key) {
+            const clampedTarget = Math.min(Math.max(Number(joint.target_position), Number(joint.min)), Number(joint.max));
+            row.slider.value = clampedTarget.toFixed(4);
+          }
+          row.valueEl.textContent = Number(joint.position).toFixed(3);
+        }
+      } else {
+        card.gripperLabel.style.display = "none";
+      }
+      for (const [name, row] of card.gripperSliders.entries()) {
+        if (!gripperSeen.has(name)) {
+          row.rowEl.remove();
+          card.gripperSliders.delete(name);
+        }
+      }
+    }
+
+    function renderTopicList(rootEl, topics, emptyMessage) {
+      rootEl.innerHTML = "";
+      if (!Array.isArray(topics) || topics.length === 0) {
+        const empty = document.createElement("li");
+        empty.className = "topic-empty";
+        empty.textContent = emptyMessage;
+        rootEl.appendChild(empty);
+        return;
+      }
+
+      for (const topic of topics) {
+        const item = document.createElement("li");
+        item.className = "topic-item";
+
+        const headerEl = document.createElement("div");
+        headerEl.className = "topic-header";
+
+        const nameEl = document.createElement("div");
+        nameEl.className = "topic-name";
+        nameEl.textContent = topic.name || "";
+
+        const activityEl = document.createElement("div");
+        applyStatusBadge(
+          activityEl,
+          topic.status,
+          topic.status_label,
+          topic.status_detail || formatActivityAge(topic.last_activity)
+        );
+
+        const metaEl = document.createElement("div");
+        metaEl.className = "topic-meta";
+        const types = Array.isArray(topic.types) ? topic.types.join(", ") : "";
+        const publishers = Array.isArray(topic.publishers) ? topic.publishers.join(", ") : "";
+        const subscribers = Array.isArray(topic.subscribers) ? topic.subscribers.join(", ") : "";
+        const publisherCount = Number(topic.publisher_count || 0);
+        const subscriberCount = Number(topic.subscriber_count || 0);
+        metaEl.textContent =
+          "types: " + types +
+          " | pubs: " + publisherCount +
+          " | subs: " + subscriberCount +
+          (publishers ? " | pub nodes: " + publishers : "") +
+          (subscribers ? " | sub nodes: " + subscribers : "");
+
+        headerEl.appendChild(nameEl);
+        headerEl.appendChild(activityEl);
+        item.appendChild(headerEl);
+        item.appendChild(metaEl);
+        rootEl.appendChild(item);
+      }
+    }
+
+    function renderStatusCards(cards) {
+      statusCardsEl.innerHTML = "";
+      if (!Array.isArray(cards) || cards.length === 0) {
+        const empty = document.createElement("div");
+        empty.className = "topic-empty";
+        empty.textContent = "No simulation/controller status available yet.";
+        statusCardsEl.appendChild(empty);
+        return;
+      }
+
+      for (const card of cards) {
+        const cardEl = document.createElement("section");
+        cardEl.className = "summary-card";
+
+        const headerEl = document.createElement("div");
+        headerEl.className = "summary-header";
+
+        const labelEl = document.createElement("div");
+        labelEl.className = "summary-label";
+        labelEl.textContent = card.label || "";
+
+        const badgeEl = document.createElement("div");
+        applyStatusBadge(
+          badgeEl,
+          card.status,
+          card.status_label,
+          card.detail || ""
+        );
+
+        const valueEl = document.createElement("div");
+        valueEl.className = "summary-value";
+        valueEl.textContent = card.summary || "";
+
+        const detailEl = document.createElement("div");
+        detailEl.className = "summary-detail";
+        detailEl.textContent = card.detail || "";
+
+        headerEl.appendChild(labelEl);
+        headerEl.appendChild(badgeEl);
+        cardEl.appendChild(headerEl);
+        cardEl.appendChild(valueEl);
+        cardEl.appendChild(detailEl);
+        statusCardsEl.appendChild(cardEl);
+      }
+    }
+
+
+
+    async function setControlMode(mode) {
+      try {
+        const res = await fetch("/api/control_mode", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ mode })
+        });
+        if (!res.ok) throw new Error("HTTP " + res.status);
+        const payload = await res.json();
+        setStatus(payload.message || "Control mode updated.");
+        await refresh();
+      } catch (err) {
+        setStatus("Mode switch failed: " + String(err));
+      }
+    }
+
+    function updateModeSelector(controlMode) {
+      if (!controlMode) return;
+      const modes = controlMode.available_modes || [];
+      const current = controlMode.mode || "ui_control";
+      state.currentMode = current;
+
+      if (!state.modesPopulated && modes.length > 0) {
+        controlModesEl.innerHTML = "";
+        for (const m of modes) {
+          const btn = document.createElement("button");
+          btn.type = "button";
+          btn.className = "mode-btn";
+          btn.dataset.mode = m.mode;
+          btn.textContent = m.label;
+          btn.title = m.description || "";
+          btn.addEventListener("click", () => setControlMode(m.mode));
+          controlModesEl.appendChild(btn);
+        }
+        state.modesPopulated = true;
+      }
+
+      for (const btn of controlModesEl.children) {
+        btn.classList.toggle("active", btn.dataset.mode === current);
+      }
+
+      const isUIControl = current === "ui_control";
+      resetAllBtn.disabled = !isUIControl;
+      document.body.classList.toggle("external-control", !isUIControl);
+
+      for (const [, card] of state.cards) {
+        for (const [, row] of card.sliders) {
+          row.slider.disabled = !isUIControl;
+        }
+        for (const [, row] of card.gripperSliders) {
+          row.slider.disabled = !isUIControl;
+        }
+      }
+    }
+
+    async function refresh() {
+      try {
+        const res = await fetch("/api/joints", { cache: "no-store" });
+        if (!res.ok) throw new Error("HTTP " + res.status);
+        const data = await res.json();
+        const groups = data.groups || [];
+        const statusOverview = data.status || {};
+        setStatus(statusOverview.headline || "Connected.");
+        updateModeSelector(data.control_mode || {});
+        renderStatusCards(statusOverview.cards || []);
+
+        const armGroups = groups.filter(g => g.mode !== "gripper_opening");
+        const gripperGroups = groups.filter(g => g.mode === "gripper_opening");
+        for (const arm of armGroups) {
+          const side = arm.label.toLowerCase().split(" ")[0];
+          const gripper = gripperGroups.find(g => g.label.toLowerCase().startsWith(side));
+          render(arm, gripper || null);
+        }
+
+        const topicOverview = data.topics || {};
+        renderTopicList(
+          isaacTopicsEl,
+          topicOverview.isaac_sim || [],
+          "No IsaacSim topics discovered yet."
+        );
+        renderTopicList(
+          frankaTopicsEl,
+          topicOverview.bridge || [],
+          "No bridge topics discovered yet."
+        );
+      } catch (err) {
+        setStatus("Connection error: " + String(err));
+      }
+    }
+
+    // ── Mobile-base hold-to-drive ─────────────────────────────────────
+    const baseDrive = { timer: null, button: null };
+
+    async function postBaseDrive(token) {
+      try {
+        await fetch("/api/base_drive", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ token })
+        });
+      } catch (err) {
+        setStatus("Base drive command failed: " + String(err));
+      }
+    }
+
+    function stopBaseDriveFor(button) {
+      // Releasing a button that already lost the drive (another button took
+      // over) must not stop the currently active one.
+      if (baseDrive.button && button !== baseDrive.button) return;
+      stopBaseDrive();
+    }
+
+    function stopBaseDrive() {
+      if (baseDrive.timer === null && !baseDrive.button) return;
+      if (baseDrive.timer !== null) {
+        clearInterval(baseDrive.timer);
+        baseDrive.timer = null;
+      }
+      if (baseDrive.button) {
+        baseDrive.button.classList.remove("active");
+        baseDrive.button = null;
+      }
+      postBaseDrive("STOP");
+    }
+
+    function startBaseDrive(button) {
+      const token = button.dataset.token;
+      if (!token) return;
+      if (baseDrive.button && baseDrive.button !== button) stopBaseDrive();
+      if (baseDrive.timer !== null) clearInterval(baseDrive.timer);
+      baseDrive.button = button;
+      button.classList.add("active");
+      postBaseDrive(token);
+      baseDrive.timer = setInterval(() => postBaseDrive(token), 150);
+    }
+
+    for (const button of document.querySelectorAll(".base-btn")) {
+      button.addEventListener("pointerdown", (event) => {
+        event.preventDefault();
+        startBaseDrive(button);
+      });
+      button.addEventListener("pointerup", () => stopBaseDriveFor(button));
+      button.addEventListener("pointercancel", () => stopBaseDriveFor(button));
+      button.addEventListener("pointerleave", () => stopBaseDriveFor(button));
+      button.addEventListener("contextmenu", (event) => event.preventDefault());
+    }
+    window.addEventListener("blur", stopBaseDrive);
+    document.addEventListener("visibilitychange", () => {
+      if (document.hidden) stopBaseDrive();
+    });
+
+    refresh();
+    setInterval(refresh, 250);
+    resetAllBtn.addEventListener("click", resetAllTargets);
+  </script>
+</body>
+</html>

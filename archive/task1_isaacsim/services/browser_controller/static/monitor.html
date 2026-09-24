@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Process Monitor</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <nav class="nav">
+    <span class="nav-brand">ROS2 Browser</span>
+    <a href="/" class="nav-link">Controller</a>
+    <a href="/topology" class="nav-link">Topology</a>
+    <a href="/monitor" class="nav-link active">Process Monitor</a>
+  </nav>
+  <div class="wrap-wide">
+    <h1>Process Monitor</h1>
+    <p>Live data-pipeline health: message rate, topic status, and data-contract compliance. Refreshes every 500 ms.</p>
+    <div class="panel">
+      <div class="panel-header">Data Pipeline Topics</div>
+      <table>
+        <thead>
+          <tr>
+            <th>Topic</th>
+            <th>Hz</th>
+            <th>Type</th>
+            <th>Status</th>
+            <th>Contract</th>
+          </tr>
+        </thead>
+        <tbody id="monitorBody"></tbody>
+      </table>
+      <div id="statusBar" class="panel-footer">Connecting...</div>
+    </div>
+  </div>
+  <script>
+    const monitorBody = document.getElementById("monitorBody");
+    const statusBar = document.getElementById("statusBar");
+
+    function shortType(t) {
+      if (t.includes("JointState")) return "JointState";
+      if (t.includes("WrenchStamped")) return "WrenchStamped";
+      return t.split("/").pop() || t;
+    }
+
+    function hzClass(topic) {
+      if (!topic.online) return "muted";
+      if (topic.contract_ok) return "ok";
+      return "warn";
+    }
+
+    function renderMonitor(topics) {
+      monitorBody.innerHTML = "";
+      for (const topic of topics) {
+        const tr = document.createElement("tr");
+
+        const tdTopic = document.createElement("td");
+        tdTopic.innerHTML =
+          '<span class="mono">' + topic.name + '</span><br>' +
+          '<span class="label-small">' + (topic.label || "") + '</span>';
+
+        const tdHz = document.createElement("td");
+        tdHz.className = "hz " + hzClass(topic);
+        tdHz.textContent = topic.online ? topic.hz.toFixed(1) : "\u2014";
+
+        const tdType = document.createElement("td");
+        tdType.className = "mono";
+        tdType.style.color = "var(--muted)";
+        tdType.textContent = shortType(topic.expected_type || "");
+
+        const tdStatus = document.createElement("td");
+        const badge = document.createElement("span");
+        badge.className = "badge " + (topic.status || "inactive");
+        badge.textContent = topic.status_label || "NO DATA";
+        tdStatus.appendChild(badge);
+
+        const tdContract = document.createElement("td");
+        if (topic.online && topic.contract_ok) {
+          tdContract.className = "contract-ok";
+          tdContract.textContent = "\u2713";
+        } else if (topic.online && topic.violations.length > 0) {
+          tdContract.className = "contract-warn";
+          tdContract.textContent = topic.violations.join("; ");
+        } else {
+          tdContract.className = "contract-muted";
+          tdContract.textContent = topic.online ? "\u2014" : "offline";
+        }
+
+        tr.appendChild(tdTopic);
+        tr.appendChild(tdHz);
+        tr.appendChild(tdType);
+        tr.appendChild(tdStatus);
+        tr.appendChild(tdContract);
+        monitorBody.appendChild(tr);
+      }
+    }
+
+    async function refresh() {
+      try {
+        const res = await fetch("/api/monitor", { cache: "no-store" });
+        if (!res.ok) throw new Error("HTTP " + res.status);
+        const data = await res.json();
+        renderMonitor(data.topics || []);
+        const online = (data.topics || []).filter(t => t.online).length;
+        const total = (data.topics || []).length;
+        const ok = (data.topics || []).filter(t => t.online && t.contract_ok).length;
+        statusBar.textContent =
+          "Online: " + online + "/" + total + " \u00b7 Contract OK: " + ok + "/" + total +
+          " \u00b7 updated " + new Date().toLocaleTimeString();
+      } catch (err) {
+        statusBar.textContent = "Connection error: " + String(err);
+      }
+    }
+
+    refresh();
+    setInterval(refresh, 500);
+  </script>
+</body>
+</html>

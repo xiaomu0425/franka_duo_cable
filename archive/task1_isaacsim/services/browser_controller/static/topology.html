@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Topic Topology</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <nav class="nav">
+    <span class="nav-brand">ROS2 Browser</span>
+    <a href="/" class="nav-link">Controller</a>
+    <a href="/topology" class="nav-link active">Topology</a>
+    <a href="/monitor" class="nav-link">Process Monitor</a>
+  </nav>
+  <div class="wrap-wide">
+    <h1>Topic Topology</h1>
+    <p>Data pipeline overview — topic status and frequency across all stages. Refreshes every 500 ms.</p>
+    <div id="topologyGrid" class="topology-grid"></div>
+    <div id="statusBar" class="panel-footer">Connecting...</div>
+  </div>
+  <script>
+    const topologyGrid = document.getElementById("topologyGrid");
+    const statusBar = document.getElementById("statusBar");
+
+    function shortName(topicName) {
+      const parts = topicName.split("/").filter(Boolean);
+      return parts.length > 0 ? "/" + parts.join("/") : topicName;
+    }
+
+    function renderTopology(columns) {
+      topologyGrid.innerHTML = "";
+      if (!Array.isArray(columns) || columns.length === 0) {
+        topologyGrid.textContent = "No topology data available.";
+        return;
+      }
+
+      for (const col of columns) {
+        const colEl = document.createElement("section");
+        colEl.className = "topo-column";
+
+        const headerEl = document.createElement("div");
+        headerEl.className = "topo-column-header";
+
+        const titleEl = document.createElement("div");
+        titleEl.className = "topo-column-title";
+        titleEl.textContent = col.label || col.key || "";
+
+        const descEl = document.createElement("div");
+        descEl.className = "topo-column-desc";
+        descEl.textContent = col.description || "";
+
+        const onlineCount = (col.topics || []).filter(t => t.online).length;
+        const totalCount = (col.topics || []).length;
+        const summaryEl = document.createElement("div");
+        summaryEl.className = "topo-column-summary";
+        summaryEl.textContent = onlineCount + "/" + totalCount + " active";
+
+        headerEl.appendChild(titleEl);
+        headerEl.appendChild(descEl);
+        headerEl.appendChild(summaryEl);
+        colEl.appendChild(headerEl);
+
+        const listEl = document.createElement("div");
+        listEl.className = "topo-topic-list";
+
+        for (const topic of (col.topics || [])) {
+          const itemEl = document.createElement("div");
+          itemEl.className = "topo-topic-item";
+
+          const topRow = document.createElement("div");
+          topRow.className = "topo-topic-top";
+
+          const nameEl = document.createElement("div");
+          nameEl.className = "topo-topic-name";
+          nameEl.textContent = shortName(topic.name || "");
+          nameEl.title = topic.name || "";
+
+          const hzEl = document.createElement("div");
+          hzEl.className = "topo-topic-hz";
+          if (topic.online) {
+            hzEl.textContent = topic.hz.toFixed(1) + " Hz";
+            hzEl.classList.add("active");
+          } else {
+            hzEl.textContent = "\u2014";
+            hzEl.classList.add("inactive");
+          }
+
+          topRow.appendChild(nameEl);
+          topRow.appendChild(hzEl);
+
+          const bottomRow = document.createElement("div");
+          bottomRow.className = "topo-topic-bottom";
+
+          const badgeEl = document.createElement("span");
+          badgeEl.className = "badge " + (topic.status || "inactive");
+          badgeEl.textContent = topic.status_label || "NO DATA";
+
+          const metaEl = document.createElement("span");
+          metaEl.className = "topo-topic-meta";
+          const metaParts = [];
+          if (topic.publisher_count > 0) metaParts.push(topic.publisher_count + " pub");
+          if (topic.subscriber_count > 0) metaParts.push(topic.subscriber_count + " sub");
+          if (topic.publishers && topic.publishers.length > 0) {
+            metaParts.push(topic.publishers.join(", "));
+          }
+          metaEl.textContent = metaParts.join(" \u00b7 ");
+
+          bottomRow.appendChild(badgeEl);
+          bottomRow.appendChild(metaEl);
+
+          itemEl.appendChild(topRow);
+          itemEl.appendChild(bottomRow);
+          listEl.appendChild(itemEl);
+        }
+
+        colEl.appendChild(listEl);
+        topologyGrid.appendChild(colEl);
+      }
+    }
+
+    async function refresh() {
+      try {
+        const res = await fetch("/api/topology", { cache: "no-store" });
+        if (!res.ok) throw new Error("HTTP " + res.status);
+        const data = await res.json();
+        renderTopology(data.columns || []);
+        const allTopics = (data.columns || []).flatMap(c => c.topics || []);
+        const uniqueNames = new Set(allTopics.map(t => t.name));
+        const onlineNames = new Set(allTopics.filter(t => t.online).map(t => t.name));
+        statusBar.textContent =
+          "Active: " + onlineNames.size + "/" + uniqueNames.size + " unique topics" +
+          " \u00b7 updated " + new Date().toLocaleTimeString();
+      } catch (err) {
+        statusBar.textContent = "Connection error: " + String(err);
+      }
+    }
+
+    refresh();
+    setInterval(refresh, 500);
+  </script>
+</body>
+</html>

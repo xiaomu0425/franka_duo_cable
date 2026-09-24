@@ -1,0 +1,33 @@
+enabled: true
+label: gripper_stable
+profile: franka
+asset_variant: white
+pose:
+  position: [0.55, -0.45, 0.18]
+  rotation_euler_xyz_deg: [0.0, 180.0, 90.0]
+finger:
+  density: 1000.0
+  friction: 100.0
+gap:
+  initial: 0.06
+  target: 0.01
+  min: 0.0
+  max: 0.08
+control:
+  mode: position
+  drive_force: 500.0
+  stiffness: 2000.0
+  damping: 30
+teleop:
+  enabled: true
+  frame: world
+  linear_speed: 0.1
+  linear_speed_xy: 0.5
+  linear_speed_z: 0.05
+  angular_speed_deg: 50.0
+  gap_speed: 0.02
+  require_ctrl: true
+  modifier: ctrl
+gravity_compensation:
+  enabled: true
+  bodies: fingers

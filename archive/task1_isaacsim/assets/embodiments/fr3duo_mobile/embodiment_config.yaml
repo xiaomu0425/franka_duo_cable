@@ -1,0 +1,65 @@
+embodiment_key: fr3duo_mobile
+version: "1.0"
+name: "Dual FR3v2 Mobile-Base"
+description: "Two FR3v2 arms on omnidirectional mobile platform (17 DOF: 3 base + 14 arm)."
+category: "mobile_base"
+
+platform:
+  has_mobile_base: true
+  arm_count: 2
+  base_dof: 3
+  total_controllable_dof: 17
+  base_type: omnidirectional_wheeled
+  wheel_count: 4
+
+physics:
+  simulation_hz: 240
+  render_hz: 60.0
+  substeps: 2
+  gravity_m_s2: 9.81
+
+control:
+  controller_mode: effort
+  ros_publish_rate_hz: 60.0
+  command_smoothing_alpha: 1.0
+  max_position_step_rad: 0.0
+  position_deadband_rad: 0.0
+  settle_position_window_rad: 0.0
+  settle_velocity_threshold_rad_s: 0.0
+  browser_command_hold_seconds: 0.25
+  controller_activity_topic: /isaac_controller_manager/activity
+  primary_effort_stale_after_s: 0.25
+
+cameras:
+  camera_config: camera_sensors.yaml
+
+arm_groups:
+  left:
+    gripper: robotiq_2f85
+  right:
+    gripper: robotiq_2f85
+
+real_to_sim_bridge:
+  real_rmw: rmw_cyclonedds_cpp
+  real_domain_id: 100
+  cyclonedds_uri: file:///workspace/assets/isaac_assets/config/cyclonedds_localhost.xml
+  left_topic: /left/joint_states
+  right_topic: /right/joint_states
+  left_gripper_topic: null
+  right_gripper_topic: null
+  gripper_joint_index: 0
+
+real_robot_follower:
+  left_topic: null
+  right_topic: null
+  left_gripper_topic: null
+  right_gripper_topic: null
+  gripper_joint_index: 0
+  stale_timeout: 0.5
+  publish_rate: 60.0
+
+notes: |
+  Simulation-only variant (real hardware integration pending).
+  Includes 3-DOF planar base (x, y, theta) for omnidirectional mobility.
+  Joint limits and kinematics sourced from URDF (asset_references.yaml).
+  Runtime configuration loaded from this file at startup.

@@ -78,7 +78,16 @@ Reusable MuJoCo mechanics, collision checks, pad-force measurement, and gripper 
 - `test_assisted_free_end_grasp.py`: separate free-end grasp regression.
 - `main.py`: general keyboard/gamepad/VR teleoperation.
 
-This repository intentionally contains the MuJoCo Franka Duo project only; the separate Newton/Isaac cable experiment is not included.
+The repository root is the directly runnable MuJoCo Franka Duo project. Additional workspace components are preserved below for migration and reference.
+
+## Workspace backup archive
+
+The `archive/` directory preserves the other Franka Duo/cable work from the former workspace, without duplicating this root MuJoCo project:
+
+- `archive/task1_isaacsim/`: the complete Isaac Sim/Newton task1 cable experiment, its FR3 Duo embodiment configuration, bridge scripts, cable USD assets, and configuration files;
+- `archive/task1_mujoco_support/`: MuJoCo task-level launchers, Docker/Conda setup, ROS teleoperation package, and ManipulationNet client support files.
+
+The root replay command does not need these archived directories. Keep them when migrating to another machine; they are included so the prior experiments and optional evaluation/ROS workflows are not lost.
 
 ## General teleoperation
 

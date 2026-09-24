@@ -1,0 +1,60 @@
+embodiment_key: fr3duo_mobile
+version: "1.0"
+description: "IsaacSim physics tuning for mobile platform with dual FR3v2 arms."
+
+base_drive_params:
+  base_linear_drive_type: velocity
+  base_angular_drive_type: velocity
+  max_linear_force_n: 500.0
+  max_angular_torque_nm: 50.0
+
+solver:
+  position_iterations: 64
+  velocity_iterations: 4
+
+arm_default_drive_params:
+  stiffness_nm_rad: 625.0
+  damping_nm_s_rad: 0.003
+  drive_type: acceleration
+
+arm_effort_limits_nm:
+  joints_1_through_4: 87.0
+  joint_5: 12.0
+  joints_6_7: 120.0
+
+scaling_parameters:
+  arms:
+    stiffness_scale: 0.65
+    damping_scale: 1.0
+    max_force_scale: 3.0
+  grippers:
+    stiffness_scale: 1.0
+    damping_scale: 1.0
+    max_force_scale: 1.0
+
+isaac_joint_drives:
+  joint_drive_config: isaac_joint_drives.yaml
+
+controller_manager:
+  controller_name: position_passthrough
+  controller_manager_topic: /isaac_controller_manager
+  controller_manager_node_name: isaac_controller_manager
+  update_rate: 240
+  arm_prefixes:
+    - left
+    - right
+  robot_types:
+    - fr3v2
+    - fr3v2
+  left_gripper_joint: left_robotiq_85_left_knuckle_joint
+  right_gripper_joint: right_robotiq_85_left_knuckle_joint
+  gripper_max_effort: 50.0
+  gripper_stall_timeout: 0.05
+  gripper_goal_tolerance: 0.02
+
+notes: |
+  Base uses velocity control (not position/acceleration).
+  Arm physics identical to fr3duo_m+v (may be separately tuned for mobile dynamics).
+  Joint limits and kinematics sourced from URDF files.
+  
+  All joint drive and controller manager configuration is centralized here.

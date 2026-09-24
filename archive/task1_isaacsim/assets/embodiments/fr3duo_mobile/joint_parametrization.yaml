@@ -1,0 +1,307 @@
+embodiment_key: fr3duo_mobile
+version: "1.0"
+description: "Joint definitions for the FR3 Duo mobile platform: 3-DOF omnidirectional base + 7-DOF per arm."
+
+# ── Mobile base (3-DOF planar) ────────────────────────────────────────────────
+
+base_group:
+  base_name: "Omnidirectional Mobile Base"
+  base_type: omnidirectional_wheeled
+  control_mode: velocity
+  controllable_dof:
+    - name: base_x
+      index: 0
+      type: prismatic
+      axis: x
+      limits:
+        lower_m: -100.0
+        upper_m:  100.0
+      velocity_limit_m_s: 1.0
+      effort_limit_n: 500.0
+
+    - name: base_y
+      index: 1
+      type: prismatic
+      axis: y
+      limits:
+        lower_m: -100.0
+        upper_m:  100.0
+      velocity_limit_m_s: 1.0
+      effort_limit_n: 500.0
+
+    - name: base_theta
+      index: 2
+      type: revolute
+      axis: z
+      limits:
+        lower_rad: -3.1416
+        upper_rad:  3.1416
+      velocity_limit_rad_s: 1.5708
+      effort_limit_nm: 50.0
+
+# ── Arm groups (identical to fr3duo_m+v) ─────────────────────────────────────
+
+arm_groups:
+  left:
+    arm_name: "Left FR3v2"
+    base_link: left_fr3v2_link0
+    ee_link: left_fr3v2_link8
+    usd_joint_scope: /ai_cell/joints
+    controllable_joints:
+      - name: left_fr3v2_joint1
+        index: 3
+        type: revolute
+        axis: z
+        usd_prim_path: /ai_cell/left_FR3/left_fr3v2_link0/left_fr3v2_joint1
+        body0: /ai_cell/left_FR3/left_fr3v2_link0
+        body1: /ai_cell/left_FR3/left_fr3v2_link0/left_fr3v2_link1
+        limits:
+          lower_rad: -2.8973
+          upper_rad:  2.8973
+        home_position_rad: 0.0
+        velocity_limit_rad_s: 2.175
+        effort_limit_nm: 87.0
+
+      - name: left_fr3v2_joint2
+        index: 4
+        type: revolute
+        axis: y
+        usd_prim_path: /ai_cell/left_FR3/left_fr3v2_link0/left_fr3v2_link1/left_fr3v2_joint2
+        body0: /ai_cell/left_FR3/left_fr3v2_link0/left_fr3v2_link1
+        body1: /ai_cell/left_FR3/left_fr3v2_link0/left_fr3v2_link1/left_fr3v2_link2
+        limits:
+          lower_rad: -1.7628
+          upper_rad:  1.7628
+        home_position_rad: -0.7854
+        velocity_limit_rad_s: 2.175
+        effort_limit_nm: 87.0
+
+      - name: left_fr3v2_joint3
+        index: 5
+        type: revolute
+        axis: z
+        usd_prim_path: /ai_cell/left_FR3/left_fr3v2_link0/left_fr3v2_link1/left_fr3v2_link2/left_fr3v2_joint3
+        body0: /ai_cell/left_FR3/left_fr3v2_link0/left_fr3v2_link1/left_fr3v2_link2
+        body1: /ai_cell/left_FR3/left_fr3v2_link0/left_fr3v2_link1/left_fr3v2_link2/left_fr3v2_link3
+        limits:
+          lower_rad: -2.8973
+          upper_rad:  2.8973
+        home_position_rad: 0.0
+        velocity_limit_rad_s: 2.175
+        effort_limit_nm: 87.0
+
+      - name: left_fr3v2_joint4
+        index: 6
+        type: revolute
+        axis: y
+        usd_prim_path: /ai_cell/left_FR3/left_fr3v2_link0/left_fr3v2_link1/left_fr3v2_link2/left_fr3v2_link3/left_fr3v2_joint4
+        body0: /ai_cell/left_FR3/left_fr3v2_link0/left_fr3v2_link1/left_fr3v2_link2/left_fr3v2_link3
+        body1: /ai_cell/left_FR3/left_fr3v2_link0/left_fr3v2_link1/left_fr3v2_link2/left_fr3v2_link3/left_fr3v2_link4
+        limits:
+          lower_rad: -3.0718
+          upper_rad: -0.0698
+        home_position_rad: -2.3562
+        velocity_limit_rad_s: 2.175
+        effort_limit_nm: 87.0
+
+      - name: left_fr3v2_joint5
+        index: 7
+        type: revolute
+        axis: z
+        usd_prim_path: /ai_cell/left_FR3/left_fr3v2_link0/left_fr3v2_link1/left_fr3v2_link2/left_fr3v2_link3/left_fr3v2_link4/left_fr3v2_joint5
+        body0: /ai_cell/left_FR3/left_fr3v2_link0/left_fr3v2_link1/left_fr3v2_link2/left_fr3v2_link3/left_fr3v2_link4
+        body1: /ai_cell/left_FR3/left_fr3v2_link0/left_fr3v2_link1/left_fr3v2_link2/left_fr3v2_link3/left_fr3v2_link4/left_fr3v2_link5
+        limits:
+          lower_rad: -2.8973
+          upper_rad:  2.8973
+        home_position_rad: 0.0
+        velocity_limit_rad_s: 2.61
+        effort_limit_nm: 12.0
+
+      - name: left_fr3v2_joint6
+        index: 8
+        type: revolute
+        axis: y
+        usd_prim_path: /ai_cell/left_FR3/left_fr3v2_link0/left_fr3v2_link1/left_fr3v2_link2/left_fr3v2_link3/left_fr3v2_link4/left_fr3v2_link5/left_fr3v2_joint6
+        body0: /ai_cell/left_FR3/left_fr3v2_link0/left_fr3v2_link1/left_fr3v2_link2/left_fr3v2_link3/left_fr3v2_link4/left_fr3v2_link5
+        body1: /ai_cell/left_FR3/left_fr3v2_link0/left_fr3v2_link1/left_fr3v2_link2/left_fr3v2_link3/left_fr3v2_link4/left_fr3v2_link5/left_fr3v2_link6
+        limits:
+          lower_rad: -0.0175
+          upper_rad:  3.7525
+        home_position_rad: 1.5708
+        velocity_limit_rad_s: 2.61
+        effort_limit_nm: 12.0
+
+      - name: left_fr3v2_joint7
+        index: 9
+        type: revolute
+        axis: z
+        usd_prim_path: /ai_cell/left_FR3/left_fr3v2_link0/left_fr3v2_link1/left_fr3v2_link2/left_fr3v2_link3/left_fr3v2_link4/left_fr3v2_link5/left_fr3v2_link6/left_fr3v2_joint7
+        body0: /ai_cell/left_FR3/left_fr3v2_link0/left_fr3v2_link1/left_fr3v2_link2/left_fr3v2_link3/left_fr3v2_link4/left_fr3v2_link5/left_fr3v2_link6
+        body1: /ai_cell/left_FR3/left_fr3v2_link0/left_fr3v2_link1/left_fr3v2_link2/left_fr3v2_link3/left_fr3v2_link4/left_fr3v2_link5/left_fr3v2_link6/left_fr3v2_link7
+        limits:
+          lower_rad: -2.8973
+          upper_rad:  2.8973
+        home_position_rad: 0.7854
+        velocity_limit_rad_s: 2.61
+        effort_limit_nm: 12.0
+
+    gripper:
+      type: robotiq_2f85
+      driver_joint: left_robotiq_85_left_knuckle_joint
+      open_position_rad: 0.0
+      closed_position_rad: 0.804
+      all_joints:
+        - name: left_robotiq_85_left_knuckle_joint
+          usd_prim_path: /ai_cell/joints/left_fr3v2_robotiq_85_left_knuckle_joint
+          multiplier: 1.0
+        - name: left_robotiq_85_right_knuckle_joint
+          usd_prim_path: /ai_cell/joints/left_fr3v2_robotiq_85_right_knuckle_joint
+          multiplier: -1.0
+        - name: left_robotiq_85_left_inner_knuckle_joint
+          usd_prim_path: /ai_cell/joints/left_fr3v2_robotiq_85_left_inner_knuckle_joint
+          multiplier: 1.0
+        - name: left_robotiq_85_right_inner_knuckle_joint
+          usd_prim_path: /ai_cell/joints/left_fr3v2_robotiq_85_right_inner_knuckle_joint
+          multiplier: -1.0
+        - name: left_robotiq_85_left_finger_tip_joint
+          usd_prim_path: /ai_cell/joints/left_fr3v2_robotiq_85_left_finger_tip_joint
+          multiplier: -1.0
+        - name: left_robotiq_85_right_finger_tip_joint
+          usd_prim_path: /ai_cell/joints/left_fr3v2_robotiq_85_right_finger_tip_joint
+          multiplier: 1.0
+
+  right:
+    arm_name: "Right FR3v2"
+    base_link: right_fr3v2_link0
+    ee_link: right_fr3v2_link8
+    usd_joint_scope: /ai_cell/joints
+    controllable_joints:
+      - name: right_fr3v2_joint1
+        index: 10
+        type: revolute
+        axis: z
+        usd_prim_path: /ai_cell/right_FR3/right_fr3v2_link0/right_fr3v2_joint1
+        body0: /ai_cell/right_FR3/right_fr3v2_link0
+        body1: /ai_cell/right_FR3/right_fr3v2_link0/right_fr3v2_link1
+        limits:
+          lower_rad: -2.8973
+          upper_rad:  2.8973
+        home_position_rad: 0.0
+        velocity_limit_rad_s: 2.175
+        effort_limit_nm: 87.0
+
+      - name: right_fr3v2_joint2
+        index: 11
+        type: revolute
+        axis: y
+        usd_prim_path: /ai_cell/right_FR3/right_fr3v2_link0/right_fr3v2_link1/right_fr3v2_joint2
+        body0: /ai_cell/right_FR3/right_fr3v2_link0/right_fr3v2_link1
+        body1: /ai_cell/right_FR3/right_fr3v2_link0/right_fr3v2_link1/right_fr3v2_link2
+        limits:
+          lower_rad: -1.7628
+          upper_rad:  1.7628
+        home_position_rad: -0.7854
+        velocity_limit_rad_s: 2.175
+        effort_limit_nm: 87.0
+
+      - name: right_fr3v2_joint3
+        index: 12
+        type: revolute
+        axis: z
+        usd_prim_path: /ai_cell/right_FR3/right_fr3v2_link0/right_fr3v2_link1/right_fr3v2_link2/right_fr3v2_joint3
+        body0: /ai_cell/right_FR3/right_fr3v2_link0/right_fr3v2_link1/right_fr3v2_link2
+        body1: /ai_cell/right_FR3/right_fr3v2_link0/right_fr3v2_link1/right_fr3v2_link2/right_fr3v2_link3
+        limits:
+          lower_rad: -2.8973
+          upper_rad:  2.8973
+        home_position_rad: 0.0
+        velocity_limit_rad_s: 2.175
+        effort_limit_nm: 87.0
+
+      - name: right_fr3v2_joint4
+        index: 13
+        type: revolute
+        axis: y
+        usd_prim_path: /ai_cell/right_FR3/right_fr3v2_link0/right_fr3v2_link1/right_fr3v2_link2/right_fr3v2_link3/right_fr3v2_joint4
+        body0: /ai_cell/right_FR3/right_fr3v2_link0/right_fr3v2_link1/right_fr3v2_link2/right_fr3v2_link3
+        body1: /ai_cell/right_FR3/right_fr3v2_link0/right_fr3v2_link1/right_fr3v2_link2/right_fr3v2_link3/right_fr3v2_link4
+        limits:
+          lower_rad: -3.0718
+          upper_rad: -0.0698
+        home_position_rad: -2.3562
+        velocity_limit_rad_s: 2.175
+        effort_limit_nm: 87.0
+
+      - name: right_fr3v2_joint5
+        index: 14
+        type: revolute
+        axis: z
+        usd_prim_path: /ai_cell/right_FR3/right_fr3v2_link0/right_fr3v2_link1/right_fr3v2_link2/right_fr3v2_link3/right_fr3v2_link4/right_fr3v2_joint5
+        body0: /ai_cell/right_FR3/right_fr3v2_link0/right_fr3v2_link1/right_fr3v2_link2/right_fr3v2_link3/right_fr3v2_link4
+        body1: /ai_cell/right_FR3/right_fr3v2_link0/right_fr3v2_link1/right_fr3v2_link2/right_fr3v2_link3/right_fr3v2_link4/right_fr3v2_link5
+        limits:
+          lower_rad: -2.8973
+          upper_rad:  2.8973
+        home_position_rad: 0.0
+        velocity_limit_rad_s: 2.61
+        effort_limit_nm: 12.0
+
+      - name: right_fr3v2_joint6
+        index: 15
+        type: revolute
+        axis: y
+        usd_prim_path: /ai_cell/right_FR3/right_fr3v2_link0/right_fr3v2_link1/right_fr3v2_link2/right_fr3v2_link3/right_fr3v2_link4/right_fr3v2_link5/right_fr3v2_joint6
+        body0: /ai_cell/right_FR3/right_fr3v2_link0/right_fr3v2_link1/right_fr3v2_link2/right_fr3v2_link3/right_fr3v2_link4/right_fr3v2_link5
+        body1: /ai_cell/right_FR3/right_fr3v2_link0/right_fr3v2_link1/right_fr3v2_link2/right_fr3v2_link3/right_fr3v2_link4/right_fr3v2_link5/right_fr3v2_link6
+        limits:
+          lower_rad: -0.0175
+          upper_rad:  3.7525
+        home_position_rad: 1.5708
+        velocity_limit_rad_s: 2.61
+        effort_limit_nm: 12.0
+
+      - name: right_fr3v2_joint7
+        index: 16
+        type: revolute
+        axis: z
+        usd_prim_path: /ai_cell/right_FR3/right_fr3v2_link0/right_fr3v2_link1/right_fr3v2_link2/right_fr3v2_link3/right_fr3v2_link4/right_fr3v2_link5/right_fr3v2_link6/right_fr3v2_joint7
+        body0: /ai_cell/right_FR3/right_fr3v2_link0/right_fr3v2_link1/right_fr3v2_link2/right_fr3v2_link3/right_fr3v2_link4/right_fr3v2_link5/right_fr3v2_link6
+        body1: /ai_cell/right_FR3/right_fr3v2_link0/right_fr3v2_link1/right_fr3v2_link2/right_fr3v2_link3/right_fr3v2_link4/right_fr3v2_link5/right_fr3v2_link6/right_fr3v2_link7
+        limits:
+          lower_rad: -2.8973
+          upper_rad:  2.8973
+        home_position_rad: 0.7854
+        velocity_limit_rad_s: 2.61
+        effort_limit_nm: 12.0
+
+    gripper:
+      type: robotiq_2f85
+      driver_joint: right_robotiq_85_left_knuckle_joint
+      open_position_rad: 0.0
+      closed_position_rad: 0.804
+      all_joints:
+        - name: right_robotiq_85_left_knuckle_joint
+          usd_prim_path: /ai_cell/joints/right_fr3v2_robotiq_85_left_knuckle_joint
+          multiplier: 1.0
+        - name: right_robotiq_85_right_knuckle_joint
+          usd_prim_path: /ai_cell/joints/right_fr3v2_robotiq_85_right_knuckle_joint
+          multiplier: -1.0
+        - name: right_robotiq_85_left_inner_knuckle_joint
+          usd_prim_path: /ai_cell/joints/right_fr3v2_robotiq_85_left_inner_knuckle_joint
+          multiplier: 1.0
+        - name: right_robotiq_85_right_inner_knuckle_joint
+          usd_prim_path: /ai_cell/joints/right_fr3v2_robotiq_85_right_inner_knuckle_joint
+          multiplier: -1.0
+        - name: right_robotiq_85_left_finger_tip_joint
+          usd_prim_path: /ai_cell/joints/right_fr3v2_robotiq_85_left_finger_tip_joint
+          multiplier: -1.0
+        - name: right_robotiq_85_right_finger_tip_joint
+          usd_prim_path: /ai_cell/joints/right_fr3v2_robotiq_85_right_finger_tip_joint
+          multiplier: 1.0
+
+notes: |
+  DOF indices: 0-2 = base (x, y, theta); 3-9 = left arm; 10-16 = right arm.
+  Total controllable DOF: 17 (3 base + 7 left arm + 7 right arm).
+  Arm joint limits and home positions are identical to fr3duo_m+v.
+  Base DOF uses velocity control; arm DOF uses position/acceleration control.
