@@ -2,3 +2,9 @@ __pycache__/
 *.pyc
 MUJOCO_LOG.TXT
 build/
+*.log
+*.jsonl
+result.json
+duo_full_scene_grasp.xml.bak
+ebim_short_cable__hwgqwxh/
+ebim_short_cable_reei44lc/

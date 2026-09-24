@@ -1,4 +1,86 @@
-# Duo Full Scene Minimal-Core Teleop
+# Franka Duo Hanging-Cable Grasp (MuJoCo)
+
+## Current validated workflow
+
+The current validated demonstration is the taught left-arm hanging-cable replay. The right arm holds the cable while the left arm follows saved waypoints `#0` through `#4` from `taught_left_hanging_waypoints.json`. Waypoint `#6` is deliberately excluded by default because it advances the gripper too far toward its base.
+
+Run it from the repository root:
+
+```bash
+conda run --no-capture-output -n duo-teleop \
+  python replay_taught_left_hanging_waypoints.py --viewer-speed 3.0
+```
+
+After waypoint `#4`, the controller keeps the taught terminal pose, makes a best-effort pad-opening orientation tweak, moves only along the usable pad-length direction until the cable is within 4 mm of the pad midpoint, locks the left arm, and closes smoothly. Closing stops at first cable contact with total pad force >= 0.50 N, then holds the reached aperture for visual inspection.
+
+A validated run ends with:
+
+```text
+[zero-g-grasp:left-light-pinch-close] TOUCH STOP: ... total=...N
+[zero-g-grasp:left-preposition-result] PASS: ...
+[zero-g-grasp:result] PASS: ...
+```
+
+`--viewer-speed 3.0` or `6.0` accelerates rendering without skipping physics, collision, or contact calculations.
+
+## Setup
+
+Tested with Linux and Conda:
+
+```bash
+conda env create -f environment.yml
+conda activate duo-teleop
+```
+
+To update an existing environment:
+
+```bash
+conda env update -n duo-teleop -f environment.yml --prune
+```
+
+## Scene generation and continued development
+
+Regenerate the hanging-cable scene after changing source scene or cable-generation parameters:
+
+```bash
+conda run --no-capture-output -n duo-teleop python build_hanging_cable_scene.py
+```
+
+`duo_hanging_short_cable.xml` references `assets/generated_hanging_scene/scene_mat_255_without_center_table.obj`; keep that generated asset versioned.
+
+Record a replacement left-arm route with:
+
+```bash
+conda run --no-capture-output -n duo-teleop python teach_left_hanging_cable_waypoints.py
+```
+
+Before adopting a new route, replay it with a deliberately selected `--end-index` and inspect the final open-gripper pose in the viewer.
+
+Task-specific tuning is in `replay_taught_left_hanging_waypoints.py`:
+
+- `SAFE_DEFAULT_END_INDEX`: last taught waypoint.
+- `joint_speed_rad_s`: replay speed.
+- `pinch_approach_max_linear_speed_m_s`: final one-axis approach speed.
+- `pinch_longitudinal_tolerance_m`: pad-centre tolerance.
+- `pinch_touch_stop_force_n`: first-contact stop threshold.
+
+Reusable MuJoCo mechanics, collision checks, pad-force measurement, and gripper behaviour are in `test_hanging_cable_zero_g_grasp.py`. The right-arm/cable initialization used by the replay is in `test_hanging_cable_target_init_zero_g_grasp.py`.
+
+## Project contents
+
+- `teleop/`: shared robot control, IK, grasp, and input code.
+- `assets/`: robot, Robotiq, fixture, room, and generated scene assets.
+- `duo_full_scene_grasp.xml`: source full scene.
+- `duo_hanging_short_cable.xml`: generated hanging-cable scene.
+- `build_hanging_cable_scene.py`: hanging-scene generator.
+- `teach_left_hanging_cable_waypoints.py` and `taught_left_hanging_waypoints.json`: route teaching.
+- `replay_taught_left_hanging_waypoints.py`: latest validated demo.
+- `test_assisted_free_end_grasp.py`: separate free-end grasp regression.
+- `main.py`: general keyboard/gamepad/VR teleoperation.
+
+This repository intentionally contains the MuJoCo Franka Duo project only; the separate Newton/Isaac cable experiment is not included.
+
+## General teleoperation
 
 Mobile dual-FR3 + Robotiq 2F-85 cable-routing teleop in the full board /
 fixture / room scene. One entry point, three input methods:
